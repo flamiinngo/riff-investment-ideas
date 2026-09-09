@@ -24,16 +24,16 @@ async def capture_desktop(browser):
     await page.wait_for_timeout(900)
     await page.screenshot(path=OUTPUT / "02-idea-desktop.png")
 
-    await page.get_by_role("button", name="Buy", exact=True).click()
-    await page.wait_for_timeout(500)
-    await page.screenshot(path=OUTPUT / "03-buy-desktop.png")
-    await page.keyboard.press("Escape")
-
     await page.get_by_role("button", name="Discover", exact=True).click()
     await page.wait_for_timeout(500)
     await page.get_by_role("heading", name="THE AI STACK", exact=True).first.click()
     await page.wait_for_timeout(700)
-    await page.screenshot(path=OUTPUT / "04-stack-desktop.png")
+    await page.screenshot(path=OUTPUT / "03-stack-desktop.png")
+
+    await page.get_by_role("button", name="Buy", exact=True).click()
+    await page.wait_for_timeout(500)
+    await page.screenshot(path=OUTPUT / "04-buy-desktop.png")
+    await page.keyboard.press("Escape")
 
     await page.get_by_role("button", name="Remix", exact=True).click()
     await page.wait_for_timeout(500)
@@ -51,6 +51,10 @@ async def capture_mobile(browser):
     await page.wait_for_timeout(800)
     await page.screenshot(path=OUTPUT / "07-idea-mobile.png")
 
+    await page.get_by_role("button", name="Discover", exact=True).click()
+    await page.wait_for_timeout(500)
+    await page.get_by_role("heading", name="THE AI STACK", exact=True).first.click()
+    await page.wait_for_timeout(700)
     await page.get_by_role("button", name="Buy", exact=True).click()
     await page.wait_for_timeout(500)
     await page.screenshot(path=OUTPUT / "08-buy-mobile.png")
