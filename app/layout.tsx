@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Riff — Investment ideas, built to be shared',
   description: 'Create a thesis. Put a portfolio behind it. Let people buy, remix and build on it.',
+  icons: { icon: '/favicon.svg' },
 };
 
 export default function RootLayout({
