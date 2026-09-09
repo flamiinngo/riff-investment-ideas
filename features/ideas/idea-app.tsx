@@ -340,7 +340,7 @@ function Discover({
             <div className="eyebrow mb-4 flex items-center gap-2 text-primary">
               <Sparkles className="size-3.5" /> Discover
               <span className="ml-1 border border-primary/20 bg-primary/5 px-2 py-1 text-[9px] tracking-[.1em]">
-                Community + demo
+                Community + sample ideas
               </span>
             </div>
             <h1 className="max-w-3xl font-semibold leading-[.88] tracking-[-.065em]">
@@ -392,7 +392,7 @@ function Discover({
             </button>
           ))}
           <span className="numeric ml-auto hidden text-muted-foreground md:block">
-            $1.82M following ideas · Demo data
+            $1.82M following ideas · Sample data
           </span>
         </div>
         <div className="grid md:grid-cols-2 xl:grid-cols-3">
@@ -422,19 +422,23 @@ function Discover({
       </section>
       <section className="bg-foreground px-5 py-20 text-background md:px-8">
         <div className="mx-auto max-w-[1380px]">
-          <p className="eyebrow text-white/45">The whole product</p>
+          <p className="eyebrow text-white/45">How Riff works</p>
           <div className="mt-8 grid gap-10 lg:grid-cols-3">
             {[
-              ['01', 'FIND AN IDEA.', 'See the belief before the basket.'],
+              [
+                '01',
+                'FIND AN IDEA.',
+                'Understand the thesis and the allocation behind it.',
+              ],
               [
                 '02',
                 'BUY IT.',
-                'Choose an amount; the allocation does the rest.',
+                'Choose an amount and execute the full allocation.',
               ],
               [
                 '03',
                 'REMIX IT.',
-                'Change the view, preserve where it came from.',
+                'Adjust the allocation without erasing its origin.',
               ],
             ].map((item) => (
               <div key={item[0]} className="border-t border-white/20 pt-6">
@@ -533,8 +537,8 @@ function PerformanceChart({ idea }: { idea: Idea }) {
       </svg>
       <p className="mt-3 text-xs text-muted-foreground">
         {idea.recordType === 'published'
-          ? 'Performance begins after market indexing. No return is implied.'
-          : 'Historical demo performance · Not a guarantee of future results.'}
+          ? 'Performance will appear after market indexing begins. Past performance is not implied.'
+          : 'Sample historical performance · Not a guarantee of future results.'}
       </p>
     </div>
   );
@@ -595,8 +599,8 @@ function IdeaDetail({
           <div className="eyebrow text-primary">
             {idea.category} · Version {idea.version} ·{' '}
             {idea.recordType === 'published'
-              ? 'Published record'
-              : 'Demo market data'}
+              ? 'Community idea'
+              : 'Sample market data'}
           </div>
           <h1 className="mt-5 max-w-4xl text-[clamp(3rem,7.4vw,7.5rem)] font-semibold leading-[.84] tracking-[-.07em]">
             {idea.name}
@@ -612,8 +616,8 @@ function IdeaDetail({
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <ShieldCheck className="size-4 text-primary" />
               {idea.recordType === 'published'
-                ? `Allocation ${idea.recordHash?.slice(0, 8)}`
-                : 'Demo lineage'}
+                ? `Allocation ID ${idea.recordHash?.slice(0, 8)}`
+                : 'Sample lineage'}
             </span>
             <button
               onClick={onFollowCreator}
@@ -671,7 +675,7 @@ function IdeaDetail({
             </Button>
           </div>
           <section className="mt-10 border-y hairline py-6">
-            <p className="eyebrow text-primary">Why buy the idea here?</p>
+            <p className="eyebrow text-primary">Why act through Riff?</p>
             <div className="mt-5 grid gap-5 sm:grid-cols-3">
               <div>
                 <strong className="text-sm">One confirmation</strong>
@@ -920,13 +924,13 @@ function AccountDialog({
     <Dialog open={open} onOpenChange={(value) => !value && close()}>
       <DialogContent className="mobile-sheet max-h-[92dvh] overflow-y-auto p-6 sm:max-w-[500px] sm:p-8">
         <DialogHeader>
-          <div className="eyebrow text-primary">Your Riff identity</div>
+          <div className="eyebrow text-primary">Riff account</div>
           <DialogTitle className="text-3xl font-semibold leading-none tracking-[-.055em]">
-            {account ? 'Account & profile' : 'Ideas need a person.'}
+            {account ? 'Account & profile' : 'Build under your name.'}
           </DialogTitle>
           <DialogDescription>
             {account
-              ? 'Manage the public identity attached to your ideas.'
+              ? 'Manage the public identity attached to your ideas and remixes.'
               : 'Browse without an account. Sign in when you want to buy, create, follow or remix.'}
           </DialogDescription>
         </DialogHeader>
@@ -1114,8 +1118,8 @@ function BuyDialog({
             Buy {idea.name}
           </DialogTitle>
           <DialogDescription>
-            Riff requests one atomic smart-wallet batch. Every leg succeeds, or
-            the basket reverts.
+            Review one atomic smart-wallet batch. Every allocation either
+            succeeds together or reverts.
           </DialogDescription>
         </DialogHeader>
         {state === 'review' && (
@@ -1837,12 +1841,18 @@ function ActivityView({
   const events = [...followEvents, ...baseEvents];
   return (
     <section className="mx-auto max-w-4xl px-5 py-14 md:px-8 md:py-20">
-      <p className="eyebrow text-primary">Activity</p>
+      <div className="flex items-center gap-3">
+        <p className="eyebrow text-primary">Activity</p>
+        <span className="border border-border px-2 py-1 text-[10px] font-semibold uppercase tracking-[.1em] text-muted-foreground">
+          Sample market events
+        </span>
+      </div>
       <h1 className="mt-4 text-[clamp(3rem,7vw,6rem)] font-semibold leading-[.9] tracking-[-.065em]">
         WHAT CHANGED?
       </h1>
       <p className="mt-5 text-lg text-muted-foreground">
-        Only events with meaning for your ideas and the people building on them.
+        Followed ideas and creators appear here immediately. Market events are
+        shown as samples until live activity indexing is connected.
       </p>
       <div className="mt-12 border-t hairline">
         {events.map(([title, detail, time, Icon]) => (
@@ -1945,11 +1955,8 @@ function ProfileView({
           </div>
         ))}
       </div>
-      <div className="mt-12 flex gap-8 overflow-x-auto border-b hairline pb-4 text-sm font-semibold">
-        <button>Created</button>
-        <button className="text-muted-foreground">Owned</button>
-        <button className="text-muted-foreground">Remixed</button>
-        <button className="text-muted-foreground">Performance</button>
+      <div className="mt-12 border-b hairline pb-4 text-sm font-semibold">
+        Created ideas
       </div>
       <div className="grid md:grid-cols-2 xl:grid-cols-3">
         {created.map((idea) => (
