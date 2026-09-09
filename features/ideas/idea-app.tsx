@@ -1111,7 +1111,7 @@ function BuyDialog({
   };
   return (
     <Dialog open={open} onOpenChange={(value) => !value && close()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto p-6 sm:max-w-[560px]">
+      <DialogContent className="top-auto bottom-0 left-0 max-h-[92dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-b-none p-5 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-w-[560px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:p-6">
         <DialogHeader>
           <div className="eyebrow text-primary">Base mainnet · USDC</div>
           <DialogTitle className="text-3xl tracking-[-.05em]">
@@ -1370,7 +1370,7 @@ function RemixDialog({
   };
   return (
     <Dialog open={open} onOpenChange={(value) => !value && close()}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto p-6 sm:max-w-[680px]">
+      <DialogContent className="top-auto bottom-0 left-0 max-h-[92dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-b-none p-5 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-w-[680px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:p-6">
         <DialogHeader>
           <div className="eyebrow text-primary">
             Remix ·{' '}
