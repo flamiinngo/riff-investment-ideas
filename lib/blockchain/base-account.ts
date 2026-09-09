@@ -24,6 +24,10 @@ type WalletConnectResult = {
 const STORAGE_KEY = 'riff.account.v1';
 let baseProvider: ProviderInterface | null = null;
 
+export function getActiveBaseAccountProvider() {
+  return baseProvider;
+}
+
 async function getProvider() {
   if (!baseProvider) {
     const { createBaseAccountSDK } = await import('@base-org/account');
@@ -88,4 +92,5 @@ export async function signOutBaseAccount() {
   localStorage.removeItem(STORAGE_KEY);
   const provider = await getProvider();
   await provider.disconnect().catch(() => undefined);
+  baseProvider = null;
 }
