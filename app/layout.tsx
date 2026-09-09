@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { BASE_APP_ID } from '@/config/base';
 import './globals.css';
 
 const geistSans = Geist({
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
   title: 'Riff — Investment ideas, built to be shared',
   description: 'Create a thesis. Put a portfolio behind it. Let people buy, remix and build on it.',
   icons: { icon: '/favicon.svg' },
+  other: { 'base:app_id': BASE_APP_ID },
 };
 
 export default function RootLayout({
