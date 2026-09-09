@@ -138,7 +138,7 @@ function AppHeader({
           onClick={() => navigate('discover')}
           className="mr-4 flex shrink-0 items-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary md:mr-10"
         >
-          <RiffLogo compact />
+          <RiffLogo />
         </button>
         <nav
           aria-label="Main navigation"

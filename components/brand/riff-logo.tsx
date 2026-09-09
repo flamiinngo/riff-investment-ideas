@@ -31,13 +31,16 @@ export function RiffMark({
   );
 }
 
-export function RiffLogo({ compact = false }: { compact?: boolean }) {
+export function RiffLogo() {
   return (
-    <span className="inline-flex items-center gap-2.5" aria-label="Riff home">
+    <span className="inline-flex items-center gap-1" aria-label="Riff home">
       <RiffMark className="size-8 text-foreground" />
-      {!compact && (
-        <span className="text-[15px] font-bold tracking-[-.055em]">RIFF</span>
-      )}
+      <span
+        aria-hidden="true"
+        className="text-[17px] font-bold tracking-[-.075em]"
+      >
+        iff
+      </span>
     </span>
   );
 }
