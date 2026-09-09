@@ -226,7 +226,6 @@ function MobileNav({
 
 function ProductFooter() {
   const links = [
-    ['README', 'https://github.com/flamiinngo/riff-investment-ideas#readme'],
     ['GitHub', 'https://github.com/flamiinngo/riff-investment-ideas'],
     ['Base', 'https://base.org'],
     ['Terms', '/terms'],
