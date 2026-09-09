@@ -59,3 +59,56 @@ export const follows = sqliteTable(
     index('idx_follows_target').on(table.targetType, table.targetId),
   ],
 );
+
+export const ideas = sqliteTable(
+  'ideas',
+  {
+    id: text('id').primaryKey(),
+    clientRequestId: text('client_request_id').notNull(),
+    creatorAddress: text('creator_address').notNull(),
+    creatorHandle: text('creator_handle').notNull(),
+    creatorName: text('creator_name').notNull(),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    thesis: text('thesis').notNull(),
+    category: text('category').notNull().default('COMMUNITY'),
+    parentIdeaId: text('parent_idea_id'),
+    version: integer('version').notNull(),
+    allocationHash: text('allocation_hash').notNull(),
+    lineageJson: text('lineage_json').notNull(),
+    createdAt: integer('created_at').notNull(),
+    status: text('status', { enum: ['published'] })
+      .notNull()
+      .default('published'),
+  },
+  (table) => [
+    uniqueIndex('idx_ideas_client_request_id').on(table.clientRequestId),
+    index('idx_ideas_created_at').on(table.createdAt),
+    index('idx_ideas_creator_created').on(
+      table.creatorAddress,
+      table.createdAt,
+    ),
+    index('idx_ideas_parent').on(table.parentIdeaId),
+  ],
+);
+
+export const ideaAllocations = sqliteTable(
+  'idea_allocations',
+  {
+    ideaId: text('idea_id')
+      .notNull()
+      .references(() => ideas.id),
+    position: integer('position').notNull(),
+    symbol: text('symbol').notNull(),
+    company: text('company').notNull(),
+    weight: integer('weight').notNull(),
+    available: integer('available', { mode: 'boolean' }).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'pk_idea_allocations_position',
+      columns: [table.ideaId, table.position],
+    }),
+    uniqueIndex('idx_idea_allocations_symbol').on(table.ideaId, table.symbol),
+  ],
+);

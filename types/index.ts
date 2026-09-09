@@ -29,6 +29,14 @@ export type Idea = {
   lineage: LineageNode[];
   version: number;
   parentIdeaId?: string;
+  recordType?: 'demo' | 'published';
+  recordHash?: string;
 };
 
-export type TransactionState = 'idle' | 'review' | 'quoting' | 'confirming' | 'confirmed' | 'failed';
+export type TransactionState =
+  | 'idle'
+  | 'review'
+  | 'quoting'
+  | 'confirming'
+  | 'confirmed'
+  | 'failed';

@@ -15,6 +15,20 @@
       "when": 1788941509321,
       "tag": "0001_optimize-indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788942497505,
+      "tag": "0002_lazy_black_widow",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788942586296,
+      "tag": "0003_protect-published-ideas",
+      "breakpoints": true
     }
   ]
 }

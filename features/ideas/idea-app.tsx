@@ -41,6 +41,10 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { ideas as seedIdeas } from '@/lib/ideas/mock-data';
 import {
+  loadPublishedIdeas,
+  publishRiffIdea,
+} from '@/lib/ideas/published-ideas';
+import {
   allocatePurchase,
   allocationTotal,
   isValidAllocation,
@@ -68,6 +72,16 @@ const money = (value: number) =>
   value >= 1000000
     ? `$${(value / 1000000).toFixed(2)}M`
     : `$${(value / 1000).toFixed(value < 100000 ? 1 : 0)}K`;
+const displayIdeaDate = (value: string) => {
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp)
+    ? value
+    : new Intl.DateTimeFormat('en', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(timestamp);
+};
 
 function AllocationStrip({
   allocation,
@@ -326,7 +340,7 @@ function Discover({
             <div className="eyebrow mb-4 flex items-center gap-2 text-primary">
               <Sparkles className="size-3.5" /> Discover
               <span className="ml-1 border border-primary/20 bg-primary/5 px-2 py-1 text-[9px] tracking-[.1em]">
-                Demo discovery data
+                Community + demo
               </span>
             </div>
             <h1 className="max-w-3xl font-semibold leading-[.88] tracking-[-.065em]">
@@ -518,7 +532,9 @@ function PerformanceChart({ idea }: { idea: Idea }) {
         />
       </svg>
       <p className="mt-3 text-xs text-muted-foreground">
-        Historical demo performance · Not a guarantee of future results.
+        {idea.recordType === 'published'
+          ? 'Performance begins after market indexing. No return is implied.'
+          : 'Historical demo performance · Not a guarantee of future results.'}
       </p>
     </div>
   );
@@ -577,7 +593,10 @@ function IdeaDetail({
       <div className="grid gap-12 lg:grid-cols-[minmax(0,1.18fr)_minmax(320px,.82fr)]">
         <article>
           <div className="eyebrow text-primary">
-            {idea.category} · Version {idea.version} · Demo market data
+            {idea.category} · Version {idea.version} ·{' '}
+            {idea.recordType === 'published'
+              ? 'Published record'
+              : 'Demo market data'}
           </div>
           <h1 className="mt-5 max-w-4xl text-[clamp(3rem,7.4vw,7.5rem)] font-semibold leading-[.84] tracking-[-.07em]">
             {idea.name}
@@ -587,10 +606,14 @@ function IdeaDetail({
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
             <span className="font-semibold">Created by {idea.creator}</span>
-            <span className="text-muted-foreground">{idea.createdAt}</span>
+            <span className="text-muted-foreground">
+              {displayIdeaDate(idea.createdAt)}
+            </span>
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <ShieldCheck className="size-4 text-primary" />
-              Canonical lineage
+              {idea.recordType === 'published'
+                ? `Allocation ${idea.recordHash?.slice(0, 8)}`
+                : 'Demo lineage'}
             </span>
             <button
               onClick={onFollowCreator}
@@ -1278,27 +1301,39 @@ function RemixDialog({
   idea: Idea | null;
   open: boolean;
   close: () => void;
-  publish: (idea: Idea) => void;
+  publish: (idea: Idea) => Promise<Idea>;
 }) {
   const [allocation, setAllocation] = useState<Allocation[]>([]);
   const [name, setName] = useState('');
   const [thesis, setThesis] = useState('');
   const [step, setStep] = useState<'edit' | 'preview' | 'published'>('edit');
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState('');
   useEffect(() => {
     if (open && idea) {
       setAllocation(idea.allocation.map((item) => ({ ...item })));
-      setName(`${idea.name} — NUCLEAR`);
+      const isEnergyDemo = idea.id === 'ai-eats-energy';
+      setName(
+        isEnergyDemo ? `${idea.name} — NUCLEAR` : `${idea.name} — FOCUSED`,
+      );
       setThesis(
-        'I agree with the power thesis, but want more direct exposure to generation and grid capacity.',
+        isEnergyDemo
+          ? 'I agree with the power thesis, but want more direct exposure to generation and grid capacity.'
+          : 'I agree with the core thesis, but would concentrate the allocation where I have the strongest conviction.',
       );
       setStep('edit');
+      setPublishing(false);
+      setPublishError('');
     }
   }, [open, idea]);
   if (!idea) return null;
-  const commit = () => {
+  const unavailableSymbols = allocation
+    .filter((item) => !getTokenizedStock(item.symbol))
+    .map((item) => item.symbol);
+  const commit = async () => {
     const child: Idea = {
       ...idea,
-      id: `${idea.id}-remix-${Date.now()}`,
+      id: `remix-${crypto.randomUUID()}`,
       name,
       thesis,
       description: thesis,
@@ -1314,8 +1349,20 @@ function RemixDialog({
       version: idea.version + 1,
       parentIdeaId: idea.id,
     };
-    publish(child);
-    setStep('published');
+    setPublishing(true);
+    setPublishError('');
+    try {
+      await publish(child);
+      setStep('published');
+    } catch (reason) {
+      setPublishError(
+        reason instanceof Error
+          ? reason.message
+          : 'We could not publish this remix.',
+      );
+    } finally {
+      setPublishing(false);
+    }
   };
   return (
     <Dialog open={open} onOpenChange={(value) => !value && close()}>
@@ -1355,9 +1402,19 @@ function RemixDialog({
                 onChange={setAllocation}
               />
             </div>
+            {unavailableSymbols.length > 0 && (
+              <p className="mt-5 flex items-start gap-2 text-sm leading-6 text-amber-800">
+                <ShieldCheck className="mt-0.5 size-4 shrink-0" />
+                {unavailableSymbols.join(', ')} are shown in this demo Idea but
+                are not currently supported for executable publishing. Remix a
+                Base-supported Idea such as THE AI STACK.
+              </p>
+            )}
             <Button
               onClick={() => setStep('preview')}
-              disabled={!isValidAllocation(allocation)}
+              disabled={
+                !isValidAllocation(allocation) || unavailableSymbols.length > 0
+              }
               className="mt-7 h-12 w-full bg-foreground text-background"
             >
               Continue <ArrowRight />
@@ -1408,12 +1465,17 @@ function RemixDialog({
               </Button>
               <Button
                 onClick={commit}
-                disabled={!name.trim() || !thesis.trim()}
+                disabled={publishing || !name.trim() || !thesis.trim()}
                 className="h-12 bg-foreground text-background"
               >
-                Publish remix
+                {publishing ? 'Publishing…' : 'Publish remix'}
               </Button>
             </div>
+            {publishError && (
+              <p role="alert" className="mt-4 text-sm text-red-700">
+                {publishError}
+              </p>
+            )}
           </>
         )}
         {step === 'published' && (
@@ -1450,17 +1512,19 @@ function CreateView({
   account,
   openAccount,
 }: {
-  publish: (idea: Idea) => void;
+  publish: (idea: Idea) => Promise<Idea>;
   account: RiffAccount | null;
   openAccount: () => void;
 }) {
   const [step, setStep] = useState(1);
-  const [name, setName] = useState('AI EATS ENERGY');
+  const [name, setName] = useState('THE AI STACK');
   const [thesis, setThesis] = useState(
-    'AI infrastructure could make electricity the next bottleneck.',
+    'Own the compute and cloud infrastructure behind every model run.',
   );
   const [allocation, setAllocation] = useState(defaultCreateAllocation);
   const [published, setPublished] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState('');
   const labels = ['Idea', 'Allocation', 'Thesis', 'Preview'];
   if (!account) {
     return (
@@ -1486,10 +1550,10 @@ function CreateView({
       </section>
     );
   }
-  const commit = () => {
+  const commit = async () => {
     const newIdea: Idea = {
       ...seedIdeas[0],
-      id: `created-${Date.now()}`,
+      id: `created-${crypto.randomUUID()}`,
       name,
       description: thesis,
       thesis,
@@ -1504,8 +1568,20 @@ function CreateView({
       lineage: [{ id: 'new', name, creator: '@you' }],
       version: 1,
     };
-    publish(newIdea);
-    setPublished(true);
+    setPublishing(true);
+    setPublishError('');
+    try {
+      await publish(newIdea);
+      setPublished(true);
+    } catch (reason) {
+      setPublishError(
+        reason instanceof Error
+          ? reason.message
+          : 'We could not publish this Idea.',
+      );
+    } finally {
+      setPublishing(false);
+    }
   };
   if (published)
     return (
@@ -1672,8 +1748,8 @@ function CreateView({
               </div>
               <p className="mt-5 flex items-start gap-2 text-sm leading-6 text-muted-foreground">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
-                Publishing records the canonical allocation and creates the root
-                of a permanent lineage.
+                Publishing preserves this allocation and creates the root of its
+                Riff lineage.
               </p>
               <div className="mt-7 flex gap-2">
                 <Button
@@ -1685,11 +1761,17 @@ function CreateView({
                 </Button>
                 <Button
                   onClick={commit}
+                  disabled={publishing}
                   className="h-12 bg-foreground px-7 text-background"
                 >
-                  Publish idea
+                  {publishing ? 'Publishing…' : 'Publish idea'}
                 </Button>
               </div>
+              {publishError && (
+                <p role="alert" className="mt-4 text-sm text-red-700">
+                  {publishError}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -1952,22 +2034,15 @@ export default function IdeaApp() {
     );
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  const publish = (idea: Idea) => {
-    const attributed = account
-      ? {
-          ...idea,
-          creator: `@${account.handle}`,
-          creatorName: account.displayName,
-          lineage: idea.lineage.map((node, index) =>
-            index === idea.lineage.length - 1 && node.creator === '@you'
-              ? { ...node, creator: `@${account.handle}` }
-              : node,
-          ),
-        }
-      : idea;
-    setIdeas((current) => [attributed, ...current]);
-    setSelectedIdea(attributed);
+  const publish = async (idea: Idea) => {
+    const published = await publishRiffIdea(idea);
+    setIdeas((current) => [
+      published,
+      ...current.filter((item) => item.id !== published.id),
+    ]);
+    setSelectedIdea(published);
     setView('discover');
+    return published;
   };
   const share = async (idea: Idea) => {
     const url = `${location.origin}${location.pathname}#idea/${idea.id}`;
@@ -2058,6 +2133,21 @@ export default function IdeaApp() {
         setAccount(session.account);
         setFollowedIdeas(new Set(session.followedIdeas));
         setFollowedCreators(new Set(session.followedCreators));
+      })
+      .catch(() => undefined);
+    void loadPublishedIdeas()
+      .then(({ ideas: published }) => {
+        if (!active) return;
+        setIdeas((current) => {
+          const publishedIds = new Set(published.map((idea) => idea.id));
+          return [
+            ...published,
+            ...current.filter((idea) => !publishedIds.has(idea.id)),
+          ];
+        });
+        const sharedId = location.hash.match(/^#idea\/(.+)$/)?.[1];
+        const sharedIdea = published.find((idea) => idea.id === sharedId);
+        if (sharedIdea) setSelectedIdea(sharedIdea);
       })
       .catch(() => undefined);
     const id = location.hash.match(/^#idea\/(.+)$/)?.[1];
