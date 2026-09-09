@@ -1,6 +1,9 @@
 import { encodeFunctionData, type Address, type Hex } from 'viem';
 import { DATA_SUFFIX } from './wagmi';
-import { getActiveBaseAccountProvider } from './base-account';
+import {
+  getActiveBaseAccountProvider,
+  getBaseAccountProvider,
+} from './base-account';
 import type { Idea } from '@/types';
 
 type EthereumProvider = {
@@ -26,18 +29,14 @@ export type BasketQuote = {
   }[];
 };
 
-function provider() {
+async function provider() {
   const baseAccount = getActiveBaseAccountProvider();
   if (baseAccount) return baseAccount;
-  const ethereum = (window as unknown as { ethereum?: EthereumProvider })
-    .ethereum;
-  if (!ethereum)
-    throw new Error('Install or open a Base-compatible wallet to continue.');
-  return ethereum;
+  return (await getBaseAccountProvider()) as EthereumProvider;
 }
 
 export async function connectBaseWallet() {
-  const ethereum = provider();
+  const ethereum = await provider();
   const accounts = (await ethereum.request({
     method: 'eth_requestAccounts',
   })) as Address[];
@@ -88,7 +87,7 @@ export async function requestBasketQuote(
 }
 
 export async function sendAtomicBasket(quote: BasketQuote, account: Address) {
-  const ethereum = provider();
+  const ethereum = await provider();
   const allowanceTarget = quote.quotes.find(
     (item) => item.allowanceTarget,
   )?.allowanceTarget;

@@ -33,11 +33,11 @@ export function RiffMark({
 
 export function RiffLogo() {
   return (
-    <span className="inline-flex items-center gap-1" aria-label="Riff home">
+    <span className="inline-flex items-center" aria-label="Riff home">
       <RiffMark className="size-8 text-foreground" />
       <span
         aria-hidden="true"
-        className="text-[17px] font-bold tracking-[-.075em]"
+        className="-ml-[5px] translate-y-px text-[23px] font-semibold leading-none tracking-[-.09em]"
       >
         iff
       </span>

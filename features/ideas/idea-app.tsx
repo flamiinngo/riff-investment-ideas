@@ -53,8 +53,9 @@ import {
 } from '@/lib/blockchain/basket-execution';
 import { getTokenizedStock } from '@/lib/stocks/tokenized-stocks';
 import {
-  readRiffAccount,
-  saveRiffAccount,
+  loadRiffSession,
+  saveRiffProfile,
+  setRiffFollow,
   signInWithBase,
   signOutBaseAccount,
   type RiffAccount,
@@ -825,7 +826,7 @@ function AccountDialog({
   const [displayName, setDisplayName] = useState(account?.displayName ?? '');
   const [bio, setBio] = useState(account?.bio ?? '');
   const [status, setStatus] = useState<
-    'idle' | 'connecting' | 'profile' | 'error'
+    'idle' | 'connecting' | 'profile' | 'saving' | 'error'
   >(account ? 'profile' : 'idle');
   const [error, setError] = useState('');
   useEffect(() => {
@@ -842,8 +843,14 @@ function AccountDialog({
     setStatus('connecting');
     setError('');
     try {
-      const nextAddress = await signInWithBase();
-      setAddress(nextAddress);
+      const session = await signInWithBase();
+      if (!session.account)
+        throw new Error('Riff could not restore your session.');
+      setAddress(session.account.address);
+      setHandle(session.account.handle);
+      setDisplayName(session.account.displayName);
+      setBio(session.account.bio);
+      onAccount(session.account);
       setStatus('profile');
     } catch (reason) {
       setError(
@@ -854,8 +861,10 @@ function AccountDialog({
       setStatus('error');
     }
   };
-  const save = () => {
+  const save = async () => {
     if (!address) return;
+    setStatus('saving');
+    setError('');
     const cleanHandle = handle
       .toLowerCase()
       .replace(/[^a-z0-9_]/g, '')
@@ -866,9 +875,18 @@ function AccountDialog({
       displayName: displayName.trim().slice(0, 40),
       bio: bio.trim().slice(0, 140),
     };
-    saveRiffAccount(next);
-    onAccount(next);
-    close();
+    try {
+      const result = await saveRiffProfile(next);
+      onAccount(result.account);
+      close();
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'We could not save your profile.',
+      );
+      setStatus('profile');
+    }
   };
   const signOut = async () => {
     await signOutBaseAccount();
@@ -933,7 +951,7 @@ function AccountDialog({
             )}
           </div>
         )}
-        {status === 'profile' && address && (
+        {(status === 'profile' || status === 'saving') && address && (
           <div className="mt-4 space-y-5">
             <div className="flex items-center gap-3 border-y hairline py-4">
               <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
@@ -984,11 +1002,23 @@ function AccountDialog({
             </label>
             <Button
               onClick={save}
-              disabled={!handle.trim() || !displayName.trim()}
+              disabled={
+                status === 'saving' || !handle.trim() || !displayName.trim()
+              }
               className="h-12 w-full bg-foreground text-background"
             >
-              {account ? 'Save profile' : 'Create profile'} <ArrowRight />
+              {status === 'saving'
+                ? 'Saving profile…'
+                : account
+                  ? 'Save profile'
+                  : 'Create profile'}{' '}
+              {status !== 'saving' && <ArrowRight />}
             </Button>
+            {error && (
+              <p role="alert" className="text-sm text-red-700">
+                {error}
+              </p>
+            )}
             {account && (
               <button
                 onClick={signOut}
@@ -1760,11 +1790,13 @@ function ProfileView({
   openIdea,
   account,
   openAccount,
+  followingCount,
 }: {
   ideas: Idea[];
   openIdea: (idea: Idea) => void;
   account: RiffAccount | null;
   openAccount: () => void;
+  followingCount: number;
 }) {
   if (!account) {
     return (
@@ -1821,7 +1853,7 @@ function ProfileView({
       <div className="grid grid-cols-2 gap-y-6 border-b hairline py-7 md:grid-cols-4">
         {[
           ['Ideas', String(created.length)],
-          ['Following', '$0'],
+          ['Following', String(followingCount)],
           ['Remixes', '0'],
           ['Holders', '0'],
         ].map(([label, value]) => (
@@ -1890,6 +1922,21 @@ export default function IdeaApp() {
   const [followedCreators, setFollowedCreators] = useState<Set<string>>(
     new Set(),
   );
+  const updateAccount = (next: RiffAccount | null) => {
+    setAccount(next);
+    if (!next) {
+      setFollowedIdeas(new Set());
+      setFollowedCreators(new Set());
+      return;
+    }
+    void loadRiffSession()
+      .then((session) => {
+        setAccount(session.account);
+        setFollowedIdeas(new Set(session.followedIdeas));
+        setFollowedCreators(new Set(session.followedCreators));
+      })
+      .catch(() => undefined);
+  };
   const openIdea = (idea: Idea) => {
     setSelectedIdea(idea);
     history.replaceState(null, '', `#idea/${idea.id}`);
@@ -1939,7 +1986,7 @@ export default function IdeaApp() {
     }
     window.setTimeout(() => setToast(''), 2400);
   };
-  const toggleIdeaFollow = (idea: Idea) => {
+  const toggleIdeaFollow = async (idea: Idea) => {
     if (!account) {
       setAccountOpen(true);
       return;
@@ -1955,8 +2002,24 @@ export default function IdeaApp() {
       willFollow ? `Following ${idea.name}.` : `Unfollowed ${idea.name}.`,
     );
     window.setTimeout(() => setToast(''), 2400);
+    try {
+      await setRiffFollow('idea', idea.id, willFollow);
+    } catch (reason) {
+      setFollowedIdeas((current) => {
+        const next = new Set(current);
+        if (willFollow) next.delete(idea.id);
+        else next.add(idea.id);
+        return next;
+      });
+      setToast(
+        reason instanceof Error
+          ? reason.message
+          : 'We could not update following.',
+      );
+      window.setTimeout(() => setToast(''), 3200);
+    }
   };
-  const toggleCreatorFollow = (creator: string) => {
+  const toggleCreatorFollow = async (creator: string) => {
     if (!account) {
       setAccountOpen(true);
       return;
@@ -1970,14 +2033,41 @@ export default function IdeaApp() {
     });
     setToast(willFollow ? `Following ${creator}.` : `Unfollowed ${creator}.`);
     window.setTimeout(() => setToast(''), 2400);
+    try {
+      await setRiffFollow('creator', creator, willFollow);
+    } catch (reason) {
+      setFollowedCreators((current) => {
+        const next = new Set(current);
+        if (willFollow) next.delete(creator);
+        else next.add(creator);
+        return next;
+      });
+      setToast(
+        reason instanceof Error
+          ? reason.message
+          : 'We could not update following.',
+      );
+      window.setTimeout(() => setToast(''), 3200);
+    }
   };
   useEffect(() => {
-    setAccount(readRiffAccount());
+    let active = true;
+    void loadRiffSession()
+      .then((session) => {
+        if (!active) return;
+        setAccount(session.account);
+        setFollowedIdeas(new Set(session.followedIdeas));
+        setFollowedCreators(new Set(session.followedCreators));
+      })
+      .catch(() => undefined);
     const id = location.hash.match(/^#idea\/(.+)$/)?.[1];
     if (id) {
       const idea = seedIdeas.find((item) => item.id === id);
       if (idea) setSelectedIdea(idea);
     }
+    return () => {
+      active = false;
+    };
   }, []);
   useEffect(() => {
     const context = document.modelContext;
@@ -2064,6 +2154,7 @@ export default function IdeaApp() {
           openIdea={openIdea}
           account={account}
           openAccount={() => setAccountOpen(true)}
+          followingCount={followedIdeas.size + followedCreators.size}
         />
       )}
       <MobileNav view={view} navigate={navigate} />
@@ -2071,7 +2162,7 @@ export default function IdeaApp() {
         open={accountOpen}
         close={() => setAccountOpen(false)}
         account={account}
-        onAccount={setAccount}
+        onAccount={updateAccount}
       />
       <BuyDialog
         idea={buyIdea}

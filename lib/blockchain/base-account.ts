@@ -21,8 +21,13 @@ type WalletConnectResult = {
   }>;
 };
 
-const STORAGE_KEY = 'riff.account.v1';
 let baseProvider: ProviderInterface | null = null;
+
+export type RiffSessionState = {
+  account: RiffAccount | null;
+  followedIdeas: string[];
+  followedCreators: string[];
+};
 
 export function getActiveBaseAccountProvider() {
   return baseProvider;
@@ -43,17 +48,31 @@ async function getProvider() {
   return baseProvider;
 }
 
-export function readRiffAccount(): RiffAccount | null {
-  try {
-    const value = localStorage.getItem(STORAGE_KEY);
-    return value ? (JSON.parse(value) as RiffAccount) : null;
-  } catch {
-    return null;
-  }
+export async function getBaseAccountProvider() {
+  return getProvider();
 }
 
-export async function signInWithBase(): Promise<Address> {
-  const nonce = crypto.randomUUID().replaceAll('-', '');
+async function jsonResponse<T>(response: Response) {
+  const body = (await response.json()) as T & { error?: string };
+  if (!response.ok)
+    throw new Error(body.error ?? 'Riff could not complete this request.');
+  return body;
+}
+
+export async function loadRiffSession(): Promise<RiffSessionState> {
+  const response = await fetch('/api/me', {
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+  return jsonResponse<RiffSessionState>(response);
+}
+
+export async function signInWithBase(): Promise<RiffSessionState> {
+  const nonceResponse = await fetch('/api/auth/nonce', {
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+  const { nonce } = await jsonResponse<{ nonce: string }>(nonceResponse);
   const provider = await getProvider();
   const result = (await provider.request({
     method: 'wallet_connect',
@@ -64,6 +83,8 @@ export async function signInWithBase(): Promise<Address> {
           signInWithEthereum: {
             nonce,
             chainId: '0x2105',
+            domain: location.host,
+            uri: location.origin,
             statement:
               'Sign in to create, buy and remix investment ideas on Riff.',
           },
@@ -77,19 +98,58 @@ export async function signInWithBase(): Promise<Address> {
     !account?.address ||
     !proof ||
     !('signature' in proof) ||
-    !proof.signature
+    !proof.signature ||
+    !proof.message
   ) {
     throw new Error('Base Account did not return a completed sign-in proof.');
   }
-  return account.address;
+  const sessionResponse = await fetch('/api/auth/session', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      address: account.address,
+      message: proof.message,
+      signature: proof.signature,
+    }),
+  });
+  await jsonResponse<{ address: Address }>(sessionResponse);
+  return loadRiffSession();
 }
 
-export function saveRiffAccount(account: RiffAccount) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(account));
+export async function saveRiffProfile(account: RiffAccount) {
+  const response = await fetch('/api/profile', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      handle: account.handle,
+      displayName: account.displayName,
+      bio: account.bio,
+    }),
+  });
+  return jsonResponse<{ account: RiffAccount }>(response);
+}
+
+export async function setRiffFollow(
+  targetType: 'idea' | 'creator',
+  targetId: string,
+  followed: boolean,
+) {
+  const response = await fetch('/api/follows', {
+    method: followed ? 'PUT' : 'DELETE',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ targetType, targetId }),
+  });
+  return jsonResponse<{ followed: boolean }>(response);
 }
 
 export async function signOutBaseAccount() {
-  localStorage.removeItem(STORAGE_KEY);
+  await fetch('/api/auth/session', {
+    method: 'DELETE',
+    credentials: 'same-origin',
+  }).catch(() => undefined);
   const provider = await getProvider();
   await provider.disconnect().catch(() => undefined);
   baseProvider = null;
