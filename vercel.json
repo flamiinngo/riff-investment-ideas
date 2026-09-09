@@ -5,6 +5,10 @@
   "outputDirectory": "public",
   "rewrites": [
     {
+      "source": "/",
+      "destination": "https://riff-investment-ideas.kobi6542.chatgpt.site/"
+    },
+    {
       "source": "/:path*",
       "destination": "https://riff-investment-ideas.kobi6542.chatgpt.site/:path*"
     }

@@ -8,6 +8,7 @@ import {
 import { base } from 'viem/chains';
 import { parseSiweMessage } from 'viem/siwe';
 import { getDb } from '@/lib/server/db';
+import { getPublicOrigin } from '@/lib/server/public-origin';
 import {
   createSessionToken,
   getSessionAddress,
@@ -33,25 +34,6 @@ type SessionRequest = {
   signature?: string;
 };
 
-function getPublicOrigin(request: Request) {
-  const requestUrl = new URL(request.url);
-  const forwardedHost = request.headers
-    .get('x-forwarded-host')
-    ?.split(',')[0]
-    ?.trim()
-    .toLowerCase();
-  const isTrustedPublicHost =
-    forwardedHost?.endsWith('.vercel.app') ||
-    forwardedHost?.endsWith('.chatgpt.site') ||
-    forwardedHost?.endsWith('.sites.openai.com');
-  if (!forwardedHost || !isTrustedPublicHost) return requestUrl;
-  const forwardedProtocol =
-    request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() === 'http'
-      ? 'http'
-      : 'https';
-  return new URL(`${forwardedProtocol}://${forwardedHost}`);
-}
-
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as SessionRequest;
@@ -69,7 +51,7 @@ export async function POST(request: Request) {
     }
     const address = getAddress(body.address) as Address;
     const parsed = parseSiweMessage(body.message);
-    const origin = getPublicOrigin(request);
+    const origin = new URL(getPublicOrigin(request));
     if (
       !parsed.nonce ||
       parsed.address?.toLowerCase() !== address.toLowerCase() ||

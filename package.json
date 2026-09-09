@@ -9,7 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "db:generate": "drizzle-kit generate",
-    "test": "node --test --experimental-strip-types lib/ideas/allocation.test.ts lib/ideas/canonical.test.ts",
+    "test": "node --test --experimental-strip-types lib/ideas/allocation.test.ts lib/ideas/canonical.test.ts lib/server/public-origin.test.ts",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
     "format": "oxfmt"
