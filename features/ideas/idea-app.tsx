@@ -224,6 +224,57 @@ function MobileNav({
   );
 }
 
+function ProductFooter() {
+  const links = [
+    ['README', 'https://github.com/flamiinngo/riff-investment-ideas#readme'],
+    ['GitHub', 'https://github.com/flamiinngo/riff-investment-ideas'],
+    ['Base', 'https://base.org'],
+    ['Terms', '/terms'],
+    ['Privacy', '/privacy'],
+  ] as const;
+  return (
+    <footer className="border-t hairline bg-[#111310] text-white">
+      <div className="mx-auto grid max-w-[1440px] gap-10 px-5 py-10 md:grid-cols-[1fr_auto] md:px-8 md:py-12">
+        <div>
+          <div className="[&_svg]:text-white [&_span]:text-white">
+            <RiffLogo />
+          </div>
+          <p className="mt-4 max-w-md text-sm leading-6 text-white/60">
+            Investment ideas people can understand, buy and remix on Base.
+          </p>
+        </div>
+        <nav
+          aria-label="Product and legal links"
+          className="flex flex-wrap content-start gap-x-6 gap-y-4 text-sm font-medium text-white/70 md:justify-end"
+        >
+          {links.map(([label, href]) => {
+            const external = href.startsWith('https://');
+            return (
+              <a
+                key={label}
+                href={href}
+                target={external ? '_blank' : undefined}
+                rel={external ? 'noreferrer' : undefined}
+                className="min-h-11 content-center transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+              >
+                {label}
+              </a>
+            );
+          })}
+        </nav>
+        <div className="border-t border-white/10 pt-5 text-xs leading-5 text-white/45 md:col-span-2 md:flex md:items-start md:justify-between">
+          <p>© 2026 Riff. Built on Base.</p>
+          <p className="mt-2 max-w-2xl md:mt-0 md:text-right">
+            Sample metrics are labelled. Nothing on Riff is investment advice,
+            and tokenized-stock access depends on account and jurisdictional
+            eligibility.
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 function IdeaCard({
   idea,
   onOpen,
@@ -2254,6 +2305,7 @@ export default function IdeaApp() {
           followingCount={followedIdeas.size + followedCreators.size}
         />
       )}
+      <ProductFooter />
       <MobileNav view={view} navigate={navigate} />
       <AccountDialog
         open={accountOpen}
