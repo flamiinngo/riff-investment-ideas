@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
+  Bookmark,
   Check,
   CircleUserRound,
   Compass,
@@ -24,6 +25,7 @@ import {
   X,
   LogOut,
   UserRoundCheck,
+  UserPlus,
 } from 'lucide-react';
 import { RiffLogo } from '@/components/brand/riff-logo';
 import { Button } from '@/components/ui/button';
@@ -136,7 +138,7 @@ function AppHeader({
           onClick={() => navigate('discover')}
           className="mr-4 flex shrink-0 items-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary md:mr-10"
         >
-          <RiffLogo />
+          <RiffLogo compact />
         </button>
         <nav
           aria-label="Main navigation"
@@ -283,11 +285,15 @@ function Discover({
   onOpen,
   onBuy,
   onCreate,
+  followedIdeas,
+  followedCreators,
 }: {
   ideas: Idea[];
   onOpen: (idea: Idea) => void;
   onBuy: (idea: Idea) => void;
   onCreate: () => void;
+  followedIdeas: Set<string>;
+  followedCreators: Set<string>;
 }) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort>('Trending');
@@ -303,13 +309,14 @@ function Discover({
     if (sort === 'Remixed')
       return [...matches].sort((a, b) => b.remixes - a.remixes);
     if (sort === 'Following')
-      return matches.filter((idea) =>
-        ['@emeka', '@sarah', '@maya'].includes(idea.creator),
+      return matches.filter(
+        (idea) =>
+          followedIdeas.has(idea.id) || followedCreators.has(idea.creator),
       );
     return [...matches].sort(
       (a, b) => b.holders + b.remixes * 20 - (a.holders + a.remixes * 20),
     );
-  }, [ideas, query, sort]);
+  }, [ideas, query, sort, followedIdeas, followedCreators]);
   return (
     <>
       <section className="mx-auto max-w-[1440px] px-4 pb-16 pt-9 sm:px-5 md:px-8 md:pt-16">
@@ -385,9 +392,15 @@ function Discover({
         </div>
         {filtered.length === 0 && (
           <div className="py-24 text-center">
-            <p className="text-xl font-semibold">No ideas found.</p>
+            <p className="text-xl font-semibold">
+              {sort === 'Following'
+                ? 'Your following feed is ready for a point of view.'
+                : 'No ideas found.'}
+            </p>
             <p className="mt-2 text-muted-foreground">
-              Try a company, ticker, thesis or creator.
+              {sort === 'Following'
+                ? 'Open an idea and follow its thesis or creator. New branches will appear here.'
+                : 'Try a company, ticker, thesis or creator.'}
             </p>
           </div>
         )}
@@ -516,12 +529,20 @@ function IdeaDetail({
   onBuy,
   onRemix,
   onShare,
+  ideaFollowed,
+  creatorFollowed,
+  onFollowIdea,
+  onFollowCreator,
 }: {
   idea: Idea;
   onBack: () => void;
   onBuy: () => void;
   onRemix: () => void;
   onShare: () => void;
+  ideaFollowed: boolean;
+  creatorFollowed: boolean;
+  onFollowIdea: () => void;
+  onFollowCreator: () => void;
 }) {
   const lineage =
     idea.id === 'ai-eats-energy'
@@ -570,6 +591,24 @@ function IdeaDetail({
               <ShieldCheck className="size-4 text-primary" />
               Canonical lineage
             </span>
+            <button
+              onClick={onFollowCreator}
+              className={`flex min-h-10 items-center gap-1.5 font-semibold underline decoration-1 underline-offset-4 ${creatorFollowed ? 'text-primary' : 'text-foreground'}`}
+            >
+              <UserPlus className="size-4" />
+              {creatorFollowed
+                ? `Following ${idea.creator}`
+                : `Follow ${idea.creator}`}
+            </button>
+            <button
+              onClick={onFollowIdea}
+              className={`flex min-h-10 items-center gap-1.5 font-semibold underline decoration-1 underline-offset-4 ${ideaFollowed ? 'text-primary' : 'text-foreground'}`}
+            >
+              <Bookmark
+                className={`size-4 ${ideaFollowed ? 'fill-current' : ''}`}
+              />
+              {ideaFollowed ? 'Following idea' : 'Follow idea'}
+            </button>
           </div>
           <div className="mt-10 grid grid-cols-3 border-y hairline py-6">
             <div>
@@ -1629,8 +1668,14 @@ function CreateView({
   );
 }
 
-function ActivityView() {
-  const events = [
+function ActivityView({
+  followedIdeas,
+  followedCreators,
+}: {
+  followedIdeas: Idea[];
+  followedCreators: string[];
+}) {
+  const baseEvents = [
     [
       'Sarah remixed AI EATS ENERGY.',
       'Created AI EATS ENERGY — NUCLEAR',
@@ -1657,6 +1702,27 @@ function ActivityView() {
       Link2,
     ],
   ] as const;
+  const followEvents: Array<[string, string, string, typeof Bookmark]> = [
+    ...followedIdeas.map(
+      (idea) =>
+        [
+          `You followed ${idea.name}.`,
+          `New remixes and meaningful changes will appear here`,
+          'now',
+          Bookmark,
+        ] as [string, string, string, typeof Bookmark],
+    ),
+    ...followedCreators.map(
+      (creator) =>
+        [
+          `You followed ${creator}.`,
+          `Their next investment idea will appear in Following`,
+          'now',
+          UserPlus,
+        ] as [string, string, string, typeof Bookmark],
+    ),
+  ];
+  const events = [...followEvents, ...baseEvents];
   return (
     <section className="mx-auto max-w-4xl px-5 py-14 md:px-8 md:py-20">
       <p className="eyebrow text-primary">Activity</p>
@@ -1820,6 +1886,10 @@ export default function IdeaApp() {
   const [toast, setToast] = useState('');
   const [account, setAccount] = useState<RiffAccount | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [followedIdeas, setFollowedIdeas] = useState<Set<string>>(new Set());
+  const [followedCreators, setFollowedCreators] = useState<Set<string>>(
+    new Set(),
+  );
   const openIdea = (idea: Idea) => {
     setSelectedIdea(idea);
     history.replaceState(null, '', `#idea/${idea.id}`);
@@ -1867,6 +1937,38 @@ export default function IdeaApp() {
     } catch {
       setToast('Sharing cancelled.');
     }
+    window.setTimeout(() => setToast(''), 2400);
+  };
+  const toggleIdeaFollow = (idea: Idea) => {
+    if (!account) {
+      setAccountOpen(true);
+      return;
+    }
+    const willFollow = !followedIdeas.has(idea.id);
+    setFollowedIdeas((current) => {
+      const next = new Set(current);
+      if (willFollow) next.add(idea.id);
+      else next.delete(idea.id);
+      return next;
+    });
+    setToast(
+      willFollow ? `Following ${idea.name}.` : `Unfollowed ${idea.name}.`,
+    );
+    window.setTimeout(() => setToast(''), 2400);
+  };
+  const toggleCreatorFollow = (creator: string) => {
+    if (!account) {
+      setAccountOpen(true);
+      return;
+    }
+    const willFollow = !followedCreators.has(creator);
+    setFollowedCreators((current) => {
+      const next = new Set(current);
+      if (willFollow) next.add(creator);
+      else next.delete(creator);
+      return next;
+    });
+    setToast(willFollow ? `Following ${creator}.` : `Unfollowed ${creator}.`);
     window.setTimeout(() => setToast(''), 2400);
   };
   useEffect(() => {
@@ -1931,6 +2033,10 @@ export default function IdeaApp() {
             account ? setRemixIdea(selectedIdea) : setAccountOpen(true)
           }
           onShare={() => share(selectedIdea)}
+          ideaFollowed={followedIdeas.has(selectedIdea.id)}
+          creatorFollowed={followedCreators.has(selectedIdea.creator)}
+          onFollowIdea={() => toggleIdeaFollow(selectedIdea)}
+          onFollowCreator={() => toggleCreatorFollow(selectedIdea.creator)}
         />
       ) : view === 'discover' ? (
         <Discover
@@ -1938,6 +2044,8 @@ export default function IdeaApp() {
           onOpen={openIdea}
           onBuy={setBuyIdea}
           onCreate={() => navigate('create')}
+          followedIdeas={followedIdeas}
+          followedCreators={followedCreators}
         />
       ) : view === 'create' ? (
         <CreateView
@@ -1946,7 +2054,10 @@ export default function IdeaApp() {
           openAccount={() => setAccountOpen(true)}
         />
       ) : view === 'activity' ? (
-        <ActivityView />
+        <ActivityView
+          followedIdeas={ideas.filter((idea) => followedIdeas.has(idea.id))}
+          followedCreators={[...followedCreators]}
+        />
       ) : (
         <ProfileView
           ideas={ideas}
